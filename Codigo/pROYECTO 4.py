@@ -4,7 +4,7 @@ from PIL import Image, ImageTk
 from tkinter import messagebox
 from tkinter import filedialog
 import random
-
+import datetime
 
 # Clase Personaje
 class Personaje:
@@ -67,10 +67,10 @@ class Lucha:
     def __init__(self, luchador1, luchador2, torneo):
         self.luchador1 = luchador1
         self.luchador2 = luchador2
-        self.round1 = "Por definir"
-        self.round2 = "Por definir"
-        self.round3 = "Por definir"
-        self.ganador = "Por definir"
+        self.round1 = None
+        self.round2 = None
+        self.round3 = None
+        self.ganador = None
         self.torneo = torneo
         self.pelear()
 
@@ -314,7 +314,7 @@ def menu_inicio(Persona):
     boton_Jugar = tk.Button(menu_ventana, text="Jugar", font=("Arial", 14), bg="#000000", fg="white", command=lambda: jugar())
     boton_Jugar.grid(row=4, column=0, pady=10, sticky="ew")
 
-    boton_estadisticas = tk.Button(menu_ventana, text="Estadisticas", font=("Arial", 14), bg="#000000", fg="white", command=lambda: validadorcredenciales())
+    boton_estadisticas = tk.Button(menu_ventana, text="Estadisticas", font=("Arial", 14), bg="#000000", fg="white", command=lambda: estadisticas())
     boton_estadisticas.grid(row=5, column=0, pady=10, sticky="ew")
 
     salir_boton = tk.Button(menu_ventana, text="Salir del Juego", font=("Arial", 14), bg="#000000", fg="white", command=menu_ventana.destroy)
@@ -345,7 +345,7 @@ def submenutorneos():
     boton_crear_torneo.grid(row=2, column=0, pady=10, sticky="ew")
     boton_borrar_torneo = tk.Button(ventana_st, text="Borrar Torneo", font=("Arial", 14), bg="#000000", fg="white", command=ventana_borrar_torneo)
     boton_borrar_torneo.grid(row=3, column=0, pady=10, sticky="ew")
-    boton_volver = tk.Button(ventana_st, text="Volver al Menú Principal", font=("Arial", 14), bg="#000000", fg="white", command=lambda: [ventana_st.destroy(), menu_inicio()])
+    boton_volver = tk.Button(ventana_st, text="Volver al Menú Principal", font=("Arial", 14), bg="#000000", fg="white", command=lambda: [ventana_st.destroy()])
     boton_volver.grid(row=4, column=0, pady=10, sticky="ew")
 
     
@@ -1252,8 +1252,7 @@ def vsbotfinal(equipo1, equipo2):
     mostrar_bando(equipo1, 0)
     mostrar_bando(equipo2, 2)
 
-    boton_crear_torneo = tk.Button(ventana_final, text="Crear Torneo", font=("Arial", 14), bg="green", fg="white",
-                                    command=lambda: guardartorneo(equipo1, equipo2))
+    boton_crear_torneo = tk.Button(ventana_final, text="Crear Torneo", font=("Arial", 14), bg="green", fg="white", command=lambda: guardartorneo(equipo1, equipo2))
     boton_crear_torneo.grid(row=8, column=0, columnspan=3, pady=20)
 
 def auto():
@@ -1473,4 +1472,113 @@ def jugar():
 
     tk.Button(marco, text="Iniciar Torneo", bg="green", fg="white", command=ejecutar_torneo).grid(row=fila + 2, column=0, pady=20)
 
+def estadisticas():
+    estadisticas_vent = tk.Tk()
+    estadisticas_vent.configure(bg = "#000000")
+    estadisticas_vent.title("Estadisticas")
+
+    ancho_ventana = 550
+    alto_ventana = 400
+    pantalla_ancho = estadisticas_vent.winfo_screenwidth()
+    pantalla_alto = estadisticas_vent.winfo_screenheight()
+    x = int((pantalla_ancho / 2) - (ancho_ventana / 2))
+    y = int((pantalla_alto / 2) - (alto_ventana / 2))
+    estadisticas_vent.geometry(f"{ancho_ventana}x{alto_ventana}+{x}+{y}")
+
+    marco = tk.Frame(estadisticas_vent, bg="black")
+    marco.pack(fill=tk.BOTH, expand=True, padx=20, pady=20)
+    
+    tk.Label(marco, text="Estadísticas del Juego", font=("Arial", 24), bg="black", fg="white").pack(pady=(0, 20))
+    
+    try:
+        heroes, villanos = cantidad_heroes()
+        cont_torneos = cantidad_torneos()
+        
+        tk.Label(marco, text=f"Héroes: {heroes}", font=("Segoe UI", 16), fg="cyan", bg="black").pack(pady=10)
+        tk.Label(marco, text=f"Villanos: {villanos}", font=("Segoe UI", 16), fg="red", bg="black").pack(pady=10)
+        tk.Label(marco, text=f"Torneos: {cont_torneos}", font=("Segoe UI", 16), fg="yellow", bg="black").pack(pady=10)
+        tk.Label(marco, text=f"Total de luchadores: {heroes + villanos}", font=("Segoe UI", 16), fg="green", bg="black").pack(pady=10)
+        
+        with open("estadisticas.txt", "w", encoding="utf-8") as estadisticas_file:
+            estadisticas_file.write(f"Heroes: {heroes}\n")
+            estadisticas_file.write(f"Villanos: {villanos}\n")
+            estadisticas_file.write(f"Torneos: {cont_torneos}\n")
+            estadisticas_file.write(f"Total de luchadores: {heroes + villanos}\n")
+            
+    except Exception as e:
+        tk.Label(marco, text=f"Error al generar estadísticas: {e}", font=("Segoe UI", 12), fg="red", bg="black").pack(pady=10)
+    
+    
+    tk.Button(marco, text="Cerrar", 
+              font=("Arial", 12), bg="#FF0000", fg="white",
+              command=estadisticas_vent.destroy).pack(pady=10)
+        
+
+
+    
+
+#E: abre el txt de luchadores
+#S: retorna la cantidad de heroes y villanos que hay creados
+#R: no tiene restriciones
+
+def cantidad_heroes():
+    try:
+        with open("Luchadores.txt", "r", encoding="utf-8") as luchadores:
+            villanos = 0
+            heroes = 0
+            for luchador in luchadores:
+                luchador = luchador.strip()
+                if luchador and luchador.startswith("'V'"):
+                    villanos += 1
+                elif luchador and luchador.startswith("'H'"):
+                    heroes += 1
+            return heroes, villanos
+    except Exception as e:
+        messagebox.showerror("Error", f"No se pudo abrir el archivo Luchadores.txt: {e}")
+        return 0, 0
+
+    
+def cantidad_wins():
+    pass
+
+
+
+
+            
+
+
+#E: abre el txt de torneos
+#S:la cantidad de torneos que existen
+#R:
+def cantidad_torneos():
+    cont = 0
+    try:
+        with open("Datos.txt", "r", encoding="utf-8") as torneos:
+            lines = torneos.readlines()
+            
+        for linea in lines:
+            partes = linea.strip().split(",")
+            if len(partes) == 4:
+                cont += 1
+        return cont
+    except Exception as e:
+        messagebox.showerror("Error", f"No se pudo abrir el archivo Datos.txt: {e}")
+        return 0
+
+def añadir_estadisticas():
+    try:
+        heroes, villanos = cantidad_heroes()
+        cont_torneos = cantidad_torneos()
+
+        with open("estadisticas.txt", "w", encoding="utf-8") as estadisticas:
+            estadisticas.write(f"Heroes: {heroes}\n")
+            estadisticas.write(f"Villanos: {villanos}\n")
+            estadisticas.write(f"Torneos: {cont_torneos}\n")
+            estadisticas.write(f"Total de luchadores: {heroes + villanos}\n")
+
+    except Exception as e:
+        messagebox.showerror("Error", f"Error al guardar estadísticas: {e}")
+
+
 ventana.mainloop()
+
