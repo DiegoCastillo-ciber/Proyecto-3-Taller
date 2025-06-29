@@ -5,6 +5,7 @@ from tkinter import messagebox
 from tkinter import filedialog
 import random
 
+
 # Clase Personaje
 class Personaje:
     def __init__(self, tipo, sexo, nombre, alter, imagen,
@@ -35,22 +36,175 @@ class Personaje:
                f"{self.elasticidad},{self.regeneracion}"
 
 class Torneo:
-    def __init__(self, Nombredeltorneo, Fecha, Lugardeltorneo, Numerosdeluchas, Bandoganador):
-        self.Nombredeltorneo = Nombredeltorneo
-        self.Fecha = Fecha
-        self.Lugardeltorneo = Lugardeltorneo
-        self.Numerosdeluchas = Numerosdeluchas
-        self.Luchas = []
-        self.Bandoganador = Bandoganador
-       
+    def __init__(self, nombre, lugar, cantidad_luchas):
+        self.nombre = nombre
+        self.lugar = lugar
+        self.cantidad_luchas = cantidad_luchas
+        self.victorias = {"bando1": 0, "bando2": 0}
+
+    def guardar_resultado(self):
+        fecha = self.obtener_fecha_desde_datos()
+        if fecha:
+            linea = f"{self.nombre},{fecha},{self.lugar},{self.cantidad_luchas},{self.victorias['bando1']},{self.victorias['bando2']}\n"
+            with open("Torneos.txt", "a", encoding="utf-8") as archivo:
+                archivo.write(linea)
+        else:
+            print("No se pudo encontrar la fecha en Datos.txt.")
+
+    def obtener_fecha_desde_datos(self):
+        try:
+            with open("Datos.txt", "r", encoding="utf-8") as archivo:
+                for linea in archivo:
+                    if linea.strip().startswith(self.nombre + ","):
+                        partes = linea.strip().split(",")
+                        if len(partes) >= 3:
+                            return partes[1].strip()
+        except:
+            pass
+        return None
+
 class Lucha:
-    def __init__(self, luchador1, luchador2, ganadorround1, ganadorround2, ganadorround3, ganadorlucha):
+    def __init__(self, luchador1, luchador2, torneo):
         self.luchador1 = luchador1
         self.luchador2 = luchador2
-        self.ganadorround1 = ganadorround1
-        self.ganadorround2 = ganadorround2
-        self.ganadorround3 = ganadorround3
-        self.ganadorlucha = ganadorlucha
+        self.round1 = "Por definir"
+        self.round2 = "Por definir"
+        self.round3 = "Por definir"
+        self.ganador = "Por definir"
+        self.torneo = torneo
+        self.pelear()
+
+    def pelear(self):
+        rondas = []
+        for _ in range(3):
+            ganador_ronda = random.choice([self.luchador1, self.luchador2])
+            rondas.append(ganador_ronda)
+
+        self.round1 = rondas[0]
+        self.round2 = rondas[1]
+        self.round3 = rondas[2]
+
+        if rondas.count(self.luchador1) > rondas.count(self.luchador2):
+            self.ganador = self.luchador1
+        else:
+            self.ganador = self.luchador2
+
+    def guardar_resultado(self):
+        try:
+            with open("Luchas.txt", "a", encoding="utf-8") as archivo:
+                archivo.write(f"{self.luchador1}, {self.luchador2}, R1, {self.round1}, {self.torneo}\n")
+                archivo.write(f"{self.luchador1}, {self.luchador2}, R2, {self.round2}, {self.torneo}\n")
+                archivo.write(f"{self.luchador1}, {self.luchador2}, R3, {self.round3}, {self.torneo}\n")
+        except:
+            print("Error al guardar los resultados de la lucha.")
+def mostrar_lucha_secuencial(torneo, luchas):
+    index = [0]
+
+    def mostrar_lucha():
+        if index[0] >= len(luchas):
+            mostrar_resultado_final(torneo)
+            return
+
+        lucha = luchas[index[0]]
+        ventana = tk.Toplevel()
+        ventana.title(f"Lucha {index[0] + 1}")
+        ventana.geometry("600x400")
+        ventana.configure(bg="black")
+
+        tk.Label(ventana, text=f"Torneo: {torneo.nombre}", fg="yellow", bg="black", font=("Arial", 18, "bold")).pack(pady=5)
+        tk.Label(ventana, text=f"Lucha {index[0] + 1}", fg="white", bg="black", font=("Arial", 14)).pack(pady=5)
+
+        contenedor = tk.Frame(ventana, bg="black")
+        contenedor.pack()
+
+        izquierda = tk.Frame(contenedor, bg="black")
+        izquierda.grid(row=0, column=0, padx=40)
+        tk.Label(izquierda, text="Bando 1", fg="skyblue", bg="black", font=("Arial", 12)).pack()
+        tk.Label(izquierda, text=lucha.luchador1, fg="cyan", bg="black", font=("Arial", 14)).pack()
+
+        tk.Label(contenedor, text="VS", fg="white", bg="black", font=("Arial", 14)).grid(row=0, column=1, padx=20)
+
+        derecha = tk.Frame(contenedor, bg="black")
+        derecha.grid(row=0, column=2, padx=40)
+        tk.Label(derecha, text="Bando 2", fg="orange", bg="black", font=("Arial", 12)).pack()
+        tk.Label(derecha, text=lucha.luchador2, fg="orange", bg="black", font=("Arial", 14)).pack()
+
+        colores = {lucha.luchador1: "cyan", lucha.luchador2: "orange"}
+        resultados = [("R1", lucha.round1), ("R2", lucha.round2), ("R3", lucha.round3)]
+
+        for ronda, ganador in resultados:
+            color = colores.get(ganador, "white")
+            tk.Label(ventana, text=f"Ganador {ronda}: {ganador}", fg=color, bg="black", font=("Arial", 12)).pack()
+
+        if lucha.ganador == lucha.luchador1:
+            torneo.victorias["bando1"] += 1
+        else:
+            torneo.victorias["bando2"] += 1
+
+        lucha.guardar_resultado()
+
+        def siguiente():
+            ventana.destroy()
+            index[0] += 1
+            mostrar_lucha()
+
+        tk.Button(ventana, text="Siguiente Lucha", command=siguiente, font=("Arial", 12), bg="gray").pack(pady=15)
+
+    mostrar_lucha()
+
+def iniciar_torneo_desde_archivo(nombre_torneo):
+    try:
+        with open("Datos.txt", "r", encoding="utf-8") as archivo:
+            lineas = archivo.readlines()
+    except:
+        tk.messagebox.showerror("Error", "No se pudo abrir el archivo Datos.txt")
+        return
+
+    i = 0
+    while i < len(lineas):
+        if lineas[i].split(",")[0].strip() == nombre_torneo:
+            encabezado = lineas[i].strip().split(",")
+            lugar = encabezado[2].strip()
+            cantidad_luchas = int(encabezado[3])
+
+            bando1 = lineas[i + 2].strip().split(", ")
+            bando2 = lineas[i + 4].strip().split(", ")
+
+            torneo = Torneo(nombre_torneo, lugar, cantidad_luchas)
+            luchas = []
+            for j in range(min(len(bando1), len(bando2), cantidad_luchas)):
+                luchador1 = bando1[j].strip()
+                luchador2 = bando2[j].strip()
+                if luchador1 and luchador2:
+                    luchas.append(Lucha(luchador1, luchador2, nombre_torneo))
+
+            mostrar_lucha_secuencial(torneo, luchas)
+            return
+        i += 1
+
+    tk.messagebox.showwarning("No encontrado", f"No se encontró el torneo '{nombre_torneo}'")
+
+
+def mostrar_resultado_final(torneo):
+    ventana = tk.Toplevel()
+    ventana.title("Resultado Final")
+    ventana.geometry("500x300")
+    ventana.configure(bg="black")
+
+    tk.Label(ventana, text=f"🏆 Torneo: {torneo.nombre} 🏆", fg="yellow", bg="black", font=("Arial", 16, "bold")).pack(pady=20)
+
+    if torneo.victorias["bando1"] > torneo.victorias["bando2"]:
+        resultado = "Bando 1"
+    elif torneo.victorias["bando2"] > torneo.victorias["bando1"]:
+        resultado = "Bando 2"
+    else:
+        resultado = "Empate"
+
+    tk.Label(ventana, text=f"Ganador del Torneo: {resultado}", fg="cyan", bg="black", font=("Arial", 14)).pack(pady=10)
+
+    torneo.guardar_resultado()
+
+    tk.Button(ventana, text="Finalizar Torneo", command=ventana.destroy, font=("Arial", 12), bg="red", fg="white").pack(pady=20)
 
 
 # Ventana de inicio
@@ -157,7 +311,7 @@ def menu_inicio(Persona):
     boton_torneos = tk.Button(menu_ventana, text="Crear/Borrar Torneos", font=("Arial", 14), bg="#000000", fg="white", command=lambda: submenutorneos())
     boton_torneos.grid(row=3, column=0, pady=10, sticky="ew")
 
-    boton_Jugar = tk.Button(menu_ventana, text="Jugar", font=("Arial", 14), bg="#000000", fg="white", command=lambda: validadorcredenciales())
+    boton_Jugar = tk.Button(menu_ventana, text="Jugar", font=("Arial", 14), bg="#000000", fg="white", command=lambda: jugar())
     boton_Jugar.grid(row=4, column=0, pady=10, sticky="ew")
 
     boton_estadisticas = tk.Button(menu_ventana, text="Estadisticas", font=("Arial", 14), bg="#000000", fg="white", command=lambda: validadorcredenciales())
@@ -189,7 +343,7 @@ def submenutorneos():
     # Botones
     boton_crear_torneo = tk.Button(ventana_st, text="Crear Torneo", font=("Arial", 14), bg="#000000", fg="white", command=lambda: [crear_torneo(), ventana_st.destroy()])
     boton_crear_torneo.grid(row=2, column=0, pady=10, sticky="ew")
-    boton_borrar_torneo = tk.Button(ventana_st, text="Borrar Torneo", font=("Arial", 14), bg="#000000", fg="white", command=crear_torneo)
+    boton_borrar_torneo = tk.Button(ventana_st, text="Borrar Torneo", font=("Arial", 14), bg="#000000", fg="white", command=ventana_borrar_torneo)
     boton_borrar_torneo.grid(row=3, column=0, pady=10, sticky="ew")
     boton_volver = tk.Button(ventana_st, text="Volver al Menú Principal", font=("Arial", 14), bg="#000000", fg="white", command=lambda: [ventana_st.destroy(), menu_inicio()])
     boton_volver.grid(row=4, column=0, pady=10, sticky="ew")
@@ -645,27 +799,42 @@ def crear_torneo():
     entrada_luchas.grid(row=4, column=0)
 
     mensaje = tk.Label(marco1, text="Selecciona el modo de seleccionar personajes:?", font=("Arial", 14), bg="#000000", fg="white")
-    mensaje.grid(row=6, column=0, pady=10, sticky="ew")
+    mensaje.grid(row=8, column=0, pady=10, sticky="ew")
+
+    etiqueta = tk.Label(marco1, text="Guarda tus datos antes de seguir", font=("Arial", 14), bg="#000000", fg="white")
+    etiqueta.grid(row=8, column=0, pady=10, sticky="ew")
+
+    boton_guardar = tk.Button(marco1, text="Guardar Datos del Torneo", font=("Arial", 14), bg="green", fg="white",
+                          command=lambda: guardar_datos(entrada_nombre, entrada_fecha, entrada_lugar, entrada_luchas))
+    boton_guardar.grid(row=7, column=0, pady=10, sticky="ew")
 
     boton_manual = tk.Button(marco1, text="Manual", font=("Arial", 14), bg="gray", fg="black", command=lambda: manual())
-    boton_manual.grid(row=7, column=0, pady=10, sticky="ew")
+    boton_manual.grid(row=9, column=0, pady=10, sticky="ew")
 
     boton_vsbot = tk.Button(marco1, text="Persona vs Programa", font=("Arial", 14), bg="gray", fg="black", command=lambda: vsbot())
-    boton_vsbot.grid(row=8, column=0, pady=10, sticky="ew")
+    boton_vsbot.grid(row=10, column=0, pady=10, sticky="ew")
 
     boton_auto = tk.Button(marco1, text = "Programa vs Programa", font = ("Arial", 14), bg="gray", fg="black", command=lambda: auto())
-    boton_auto.grid(row=9, column=0, pady=10, sticky="ew")
+    boton_auto.grid(row=11, column=0, pady=10, sticky="ew")
 
     salir_boton = tk.Button(marco1, text="Volver al menu principal", font=("Arial", 14), bg="#FFFFFF", fg="black", command=[menu_inicio, crea_torneo.destroy])
-    salir_boton.grid(row=10, column=0, pady=10, sticky="ew")
+    salir_boton.grid(row=12, column=0, pady=10, sticky="ew")
 
-    nombre = entrada_nombre.get()
-    fecha = entrada_fecha.get()
-    lugar = entrada_lugar.get()
-    numero_de_luchas = entrada_luchas.get()
+    def guardar_datos(nombre_e, fecha_e, lugar_e, luchas_e):
+        nombre = nombre_e.get()
+        fecha = fecha_e.get()
+        lugar = lugar_e.get()
+        numero_de_luchas = luchas_e.get()
 
-    with open("EL GRAN TORNEO/Torneos.txt", "a", encoding="utf-8") as archivo:
-        archivo.write(f"{nombre},{fecha},{lugar},{numero_de_luchas}")
+        if nombre == "" or fecha == "" or lugar == "" or numero_de_luchas == "":
+            messagebox.showwarning("Campos incompletos", "Por favor, completa todos los campos.")
+            return
+
+        with open("Datos.txt", "a", encoding="utf-8") as archivo:
+            archivo.write(f"{nombre},{fecha},{lugar},{numero_de_luchas}\n")
+
+        messagebox.showinfo("Guardado", "Datos Guardados exitosamente.")
+        
     
 
 def manual():
@@ -919,16 +1088,7 @@ def manualfinal(bando1, bando2):
     def mostrar_bando(bando, columna):
         for i in range(5):
             personaje = bando[i]
-            try:
-                ruta = f"personajes/{personaje.lower().strip().replace(' ', '_')}.png"
-                img = Image.open(ruta)
-                img = img.resize((100, 100), Image.Resampling.LANCZOS)
-                img_tk = ImageTk.PhotoImage(img)
-                etiqueta = tk.Label(ventana_final, image=img_tk, bg="black")
-                etiqueta.image = img_tk
-            except:
-                etiqueta = tk.Label(ventana_final, text=personaje, bg="black", fg="white", wraplength=100)
-
+            etiqueta = tk.Label(ventana_final, text=personaje, bg="black", fg="white", wraplength=100)
             etiqueta.grid(row=3 + i, column=columna, padx=20, pady=10)
 
     mostrar_bando(bando1, 0)
@@ -939,9 +1099,9 @@ def manualfinal(bando1, bando2):
     boton_crear_torneo.grid(row=8, column=0, columnspan=3, pady=20)
 
 def guardartorneo(bando1, bando2):
-    with open("Torneos.txt", "a", encoding="utf-8") as archivo:
-        archivo.write("Bando 1: " + ", ".join(bando1) + "\n")
-        archivo.write("Bando 2: " + ", ".join(bando2) + "\n")
+    with open("Datos.txt", "a", encoding="utf-8") as archivo:
+        archivo.write("Bando 1: "+ "\n" + ", ".join(bando1) + "\n")
+        archivo.write("Bando 2: " + "\n"+ ", ".join(bando2) + "\n")
 
     messagebox.showinfo("Listo", "Torneo guardado exitosamente")
     menu_inicio(Persona="")  # Regresa al menú principal
@@ -976,6 +1136,35 @@ def seleccionar_personajes_random():
     return resultado
   # Inicia el bucle principal de la ventana
 
+def seleccionar_personajes_random1():
+    seleccionados = []
+
+    try:
+        archivo = open("Luchadores.txt", "r", encoding="utf-8")
+        lineas = archivo.readlines()
+        archivo.close()
+    except:
+        messagebox.showerror("Error", "No se pudo abrir el archivo Luchadores.txt")
+        return []
+
+    # Revisar que hay suficientes personajes
+    if len(lineas) < 5:
+        messagebox.showwarning("Advertencia", "No hay suficientes personajes para seleccionar 5 al azar")
+        return []
+
+    # Seleccionar 5 líneas aleatorias sin repeticion
+    seleccionados = random.sample(lineas, 5)
+
+    # Obtener el alter ego de cada personaje (posición 4 del texto)
+    resultado = []
+    for linea in seleccionados:
+        partes = linea.strip().split(",")
+        if len(partes) >= 4:
+            alter = partes[3].strip(" '")
+            resultado.append(alter)
+
+    return resultado
+  # Inicia el bucle principal de la ventana
 def vsbot():
     ventana_vsbot = tk.Toplevel()
     ventana_vsbot.title("Modo Persona vs Programa")
@@ -992,35 +1181,296 @@ def vsbot():
     marco.grid(row=0, column=0, padx=20, pady=20)
 
     mensaje = tk.Label(marco, text="Modo Persona vs Programa", font=("Arial", 16), bg="#000000", fg="white")
-    mensaje.grid(row=0, column=1, sticky="ew", pady=20)
+    mensaje.grid(row=0, column=0, columnspan=2, pady=20)
 
-    boton_sele= tk.Button(marco, text="Seleccionar Personajes", font=("Arial", 14), bg="green", fg="white",
-                                  command=lambda: [seleccionar_personajes1(), ventana_vsbot.destroy()])
-    boton_sele.grid(row=1, column=1, pady=20)
+    # Variables internas para almacenar los bandos
+    bando1 = []
+    bando_programa = []
 
-    etiqueta = tk.Label(marco, text=" VS ", bg="#000000", fg="white")
-    etiqueta.grid(row=2, column=1, sticky="ew", pady=20)
+    def seleccionar_jugador():
+        nonlocal bando1
+        bando1 = seleccionar_personajes1()
 
-    boton_q= tk.Button(marco, text="Programa", font=("Arial", 14), bg="green", fg="white",
-                                  command=lambda: seleccionar_personajes_random())
-    boton_q.grid(row=3, column=1, pady=20)
+    def seleccionar_programa():
+        nonlocal bando_programa
+        bando_programa = seleccionar_personajes_random()
+        messagebox.showinfo("Listo", "El programa seleccionó sus personajes.")
 
-    bando_programa = seleccionar_personajes_random()
-    bando1 = seleccionar_personajes1()
-    if bando1==len(bando_programa)==0 or len(bando1)<5:
-        messagebox.showwarning("Advertencia", "Debe seleccionar al menos 5 personajes para ambos bandos")
-        return
-    crear= tk.Button(marco, text="Siguiente", font=("Arial", 14), bg="blue", fg="white", command=lambda: guardartorneo(bando1, bando_programa))
-    crear.grid(row=4, column=1, pady=20)
-    
+    def continuar():
+        if len(bando1) < 5 or len(bando_programa) < 5:
+            messagebox.showwarning("Advertencia", "Ambos bandos deben tener 5 personajes.")
+            return
+        ventana_vsbot.destroy()
+        vsbotfinal(bando1, bando_programa)
 
-    ventana_vsbot.mainloop()  # Mantiene la ventana abierta
+    boton_jugador = tk.Button(marco, text="Seleccionar (Jugador)", font=("Arial", 14), bg="green", fg="white",
+                              command=seleccionar_jugador)
+    boton_jugador.grid(row=1, column=0, pady=10, columnspan=2)
+
+    boton_programa = tk.Button(marco, text="Seleccionar (Programa)", font=("Arial", 14), bg="green", fg="white",
+                               command=seleccionar_programa)
+    boton_programa.grid(row=2, column=0, pady=10, columnspan=2)
+
+    boton_siguiente = tk.Button(marco, text="Siguiente", font=("Arial", 14), bg="blue", fg="white",
+                                command=continuar)
+    boton_siguiente.grid(row=3, column=0, pady=10, columnspan=2)
+
+    ventana_vsbot.mainloop()
 
 def vsbotfinal(equipo1, equipo2):
-    pass
+    ventana_final = tk.Toplevel()
+    ventana_final.title("Torneo Manual")
+    ventana_final.geometry("1200x600")
+    ventana_final.configure(bg="black")
+
+    titulo = tk.Label(ventana_final, text="Torneo Manual vs Programa", font=("Arial", 24, "bold"),
+                      bg="black", fg="white")
+    titulo.grid(row=0, column=0, columnspan=3, pady=20)
+
+    mensaje1 = tk.Label(ventana_final, text="Bandos Seleccionados", font=("Arial", 16),
+                       bg="black", fg="white")
+    mensaje1.grid(row=1, column=0, columnspan=3, pady=10)
+
+    b1 = tk.Label(ventana_final, text="Bando 1", font=("Arial", 16, "bold"),
+                    bg="black", fg="cyan")
+    b1.grid(row=2, column=0)
+
+    b2 = tk.Label(ventana_final, text="VS", font=("Arial", 16, "bold"),
+                     bg="black", fg="white")
+    b2.grid(row=2, column=1)
+
+    b3 = tk.Label(ventana_final, text="Bando 2", font=("Arial", 16, "bold"),
+                    bg="black", fg="red")
+    b3.grid(row=2, column=2)
+
+    def mostrar_bando(bando, columna):
+        for i in range(5):
+            personaje = bando[i]
+            etiqueta = tk.Label(ventana_final, text=personaje, bg="black", fg="white", wraplength=100)
+            etiqueta.grid(row=3 + i, column=columna, padx=20, pady=10)
+
+    mostrar_bando(equipo1, 0)
+    mostrar_bando(equipo2, 2)
+
+    boton_crear_torneo = tk.Button(ventana_final, text="Crear Torneo", font=("Arial", 14), bg="green", fg="white",
+                                    command=lambda: guardartorneo(equipo1, equipo2))
+    boton_crear_torneo.grid(row=8, column=0, columnspan=3, pady=20)
+
+def auto():
+    ventana_auto = tk.Toplevel()
+    ventana_auto.title("Modo Persona vs Programa")
+    ventana_auto.configure(bg="#000000")
+    ancho_ventana = 250
+    alto_ventana = 400
+    pantalla_ancho = ventana_auto.winfo_screenwidth()
+    pantalla_alto = ventana_auto.winfo_screenheight()
+    x = int((pantalla_ancho / 2) - (ancho_ventana / 2))
+    y = int((pantalla_alto / 2) - (alto_ventana / 2))
+    ventana_auto.geometry(f"{ancho_ventana}x{alto_ventana}+{x}+{y}")
+
+    marco = tk.Frame(ventana_auto, bg="#000000")
+    marco.grid(row=0, column=0, padx=20, pady=20)
+
+    mensaje = tk.Label(marco, text="Programa vs Programa", font=("Arial", 16), bg="#000000", fg="white")
+    mensaje.grid(row=0, column=0, columnspan=2, pady=20)
+
+    # Variables internas para almacenar los bandos
+    bando1 = []
+    bando_programa = []
+
     
 
+    def seleccionar_programa1():
+        nonlocal bando1
+        bando1 = seleccionar_personajes_random1()
+        messagebox.showinfo("Listo", "El programa seleccionó sus personajes.")
+    def seleccionar_programa():
+        nonlocal bando_programa
+        bando_programa = seleccionar_personajes_random()
+        messagebox.showinfo("Listo", "El programa seleccionó sus personajes.")
+    def continuar():
+        if len(bando1) < 5 or len(bando_programa) < 5:
+            messagebox.showwarning("Advertencia", "Ambos bandos deben tener 5 personajes.")
+            return
+        ventana_auto.destroy()
+        autofinal(bando1, bando_programa)
 
+    boton_jugador = tk.Button(marco, text="Seleccionar (Programa)", font=("Arial", 14), bg="green", fg="white",
+                              command=seleccionar_programa1)
+    boton_jugador.grid(row=1, column=0, pady=10, columnspan=2)
 
-vsbot()
+    etiqueta = tk.Label(marco, text= " VS ", font=("Arial", 16), bg="#000000", fg="white")
+    etiqueta.grid(row=2, column=0, columnspan=2, pady=20)
+
+    boton_programa = tk.Button(marco, text="Seleccionar (Programa)", font=("Arial", 14), bg="green", fg="white",
+                               command=seleccionar_programa)
+    boton_programa.grid(row=3, column=0, pady=10, columnspan=2)
+
+    boton_siguiente = tk.Button(marco, text="Siguiente", font=("Arial", 14), bg="blue", fg="white",
+                                command=continuar)
+    boton_siguiente.grid(row=4, column=0, pady=10, columnspan=2)
+
+    ventana_auto.mainloop()
+
+def autofinal(equipo1, equipo2):
+    ventana_fi = tk.Toplevel()
+    ventana_fi.title("Torneo Manual")
+    ventana_fi.geometry("1200x600")
+    ventana_fi.configure(bg="black")
+
+    titulo = tk.Label(ventana_fi, text="Programa vs Programa", font=("Arial", 24, "bold"),
+                      bg="black", fg="white")
+    titulo.grid(row=0, column=0, columnspan=3, pady=20)
+
+    mensaje1 = tk.Label(ventana_fi, text="Bandos Seleccionados", font=("Arial", 16),
+                       bg="black", fg="white")
+    mensaje1.grid(row=1, column=0, columnspan=3, pady=10)
+
+    bo1 = tk.Label(ventana_fi, text="Bando 1", font=("Arial", 16, "bold"),
+                    bg="black", fg="cyan")
+    bo1.grid(row=2, column=0)
+
+    bo2 = tk.Label(ventana_fi, text="VS", font=("Arial", 16, "bold"),
+                     bg="black", fg="white")
+    bo2.grid(row=2, column=1)
+
+    bo3 = tk.Label(ventana_fi, text="Bando 2", font=("Arial", 16, "bold"),
+                    bg="black", fg="red")
+    bo3.grid(row=2, column=2)
+
+    def mostrar_bando(bando, columna, contenedor):
+        for i in range(5):
+            personaje = bando[i]
+            etiqueta = tk.Label(contenedor, text=personaje, bg="black", fg="white", wraplength=100)
+            etiqueta.grid(row=3 + i, column=columna, padx=20, pady=10)
+            
+
+    mostrar_bando(equipo1, 0, ventana_fi)
+    mostrar_bando(equipo2, 2, ventana_fi)
+
+    boton_crear_torneo = tk.Button(ventana_fi, text="Crear Torneo", font=("Arial", 14), bg="green", fg="white",
+                                    command=lambda: guardartorneo(equipo1, equipo2))
+    boton_crear_torneo.grid(row=8, column=0, columnspan=3, pady=20)
+
+def ventana_borrar_torneo():
+    ventana = tk.Toplevel()
+    ventana.title("Eliminar Torneo")
+    ventana.configure(bg="#000000")
+    ventana.geometry("500x500")
+
+    marco = tk.Frame(ventana, bg="black")
+    marco.grid(row=0, column=0, padx=20, pady=20)
+
+    tk.Label(marco, text="Torneos disponibles:", bg="black", fg="yellow", font=("Arial", 14)).grid(row=0, column=0, sticky="w", pady=10)
+
+    # Leer archivo y mostrar solo los nombres correctos de torneo
+    try:
+        with open("Datos.txt", "r", encoding="utf-8") as archivo:
+            lineas = archivo.readlines()
+    except:
+        messagebox.showerror("Error", "No se pudo abrir el archivo Datos.txt")
+        ventana.destroy()
+        return
+
+    nombres_torneos = []
+    fila = 1
+    for linea in lineas:
+        partes = linea.strip().split(",")
+        if len(partes) == 4:
+            nombre = partes[0].strip()
+            if nombre != "":
+                nombres_torneos.append(nombre)
+                tk.Label(marco, text=nombre, bg="black", fg="white", font=("Arial", 12)).grid(row=fila, column=0, sticky="w")
+                fila += 1
+
+    # Entrada para escribir el nombre a eliminar
+    tk.Label(marco, text="\nEscriba el nombre exacto del torneo a eliminar:", bg="black", fg="white").grid(row=fila + 1, column=0, sticky="w")
+    entrada = tk.Entry(marco)
+    entrada.grid(row=fila + 2, column=0, pady=5)
+
+    def confirmar_eliminacion():
+        nombre = entrada.get().strip()
+        if nombre == "":
+            messagebox.showwarning("Campo vacío", "Por favor escriba un nombre de torneo.")
+            return
+
+        if nombre not in nombres_torneos:
+            messagebox.showwarning("No encontrado", f"No se encontró el torneo '{nombre}'.")
+            return
+
+        borrar_torneo_completo(nombre)
+        messagebox.showinfo("Éxito", f"Torneo '{nombre}' eliminado correctamente.")
+        ventana.destroy()
+
+    # Botón para eliminar
+    tk.Button(marco, text="Eliminar Torneo", bg="red", fg="white", command=confirmar_eliminacion).grid(row=fila + 3, column=0, pady=20)
+def borrar_torneo_completo(nombre_torneo):
+    lineas_nuevas = []
+    with open("Datos.txt", "r", encoding="utf-8") as archivo:
+        lineas = archivo.readlines()
+
+    i = 0
+    while i < len(lineas):
+        linea = lineas[i].strip()
+        if linea.startswith(nombre_torneo + ","):  # Compara nombre exacto con la primera línea
+            i = i + 5  # Salta la línea del torneo y las dos siguientes (bando 1 y bando 2)
+        else:
+            lineas_nuevas.append(lineas[i])
+            i = i + 1
+
+    with open("Datos.txt", "w", encoding="utf-8") as archivo:
+        for linea in lineas_nuevas:
+            archivo.write(linea)
+        
+def jugar():
+    ventana_jug = tk.Toplevel()
+    ventana_jug.title("Submenú de Torneos")
+    ventana_jug.configure(bg="#000000")
+
+    ancho_ventana = 550
+    alto_ventana = 400
+    pantalla_ancho = ventana_jug.winfo_screenwidth()
+    pantalla_alto = ventana_jug.winfo_screenheight()
+    x = int((pantalla_ancho / 2) - (ancho_ventana / 2))
+    y = int((pantalla_alto / 2) - (alto_ventana / 2))
+    ventana_jug.geometry(f"{ancho_ventana}x{alto_ventana}+{x}+{y}")
+
+    marco = tk.Frame(ventana_jug, bg="black")
+    marco.grid(row=0, column=0, padx=20, pady=20)
+
+    tk.Label(marco, text="Juega Un Torneo", font=("Arial", 24), bg="black", fg="white").grid(row=0, column=0, pady=10, sticky="w")
+    tk.Label(marco, text="Torneos disponibles:", bg="black", fg="yellow", font=("Arial", 14)).grid(row=1, column=0, sticky="w")
+
+    try:
+        with open("Datos.txt", "r", encoding="utf-8") as archivo:
+            lineas = archivo.readlines()
+    except:
+        messagebox.showerror("Error", "No se pudo abrir el archivo Datos.txt")
+        ventana_jug.destroy()
+        return
+
+    nombres_torneos = []
+    fila = 2
+    for linea in lineas:
+        partes = linea.strip().split(",")
+        if len(partes) == 4:
+            nombre = partes[0].strip()
+            if nombre != "":
+                nombres_torneos.append(nombre)
+                tk.Label(marco, text=nombre, bg="black", fg="white", font=("Arial", 12)).grid(row=fila, column=0, sticky="w")
+                fila += 1
+
+    tk.Label(marco, text="Digite el nombre del torneo:", fg="white", bg="#000000").grid(row=fila, column=0, sticky="w")
+    entrada_torneo = tk.Entry(marco)
+    entrada_torneo.grid(row=fila + 1, column=0, pady=10)
+
+    def ejecutar_torneo():
+        nombre = entrada_torneo.get().strip()
+        if nombre == "":
+            messagebox.showwarning("Error", "Debe ingresar un nombre.")
+        else:
+            iniciar_torneo_desde_archivo(nombre)
+
+    tk.Button(marco, text="Iniciar Torneo", bg="green", fg="white", command=ejecutar_torneo).grid(row=fila + 2, column=0, pady=20)
+
 ventana.mainloop()
